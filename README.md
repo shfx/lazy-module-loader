@@ -1,2 +1,2 @@
-# async-script-loader
-Async script loader for fetching modules with their dependencies
+# lazy-module-loader
+Async module loader with support for lazy loading and preloading

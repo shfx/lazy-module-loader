@@ -1,0 +1,25 @@
+{
+  "name": "lazy-module-loader",
+  "version": "0.0.0",
+  "description": "Async module loader with support for lazy loading and preloading",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aswitalski/lazy-module-loader.git"
+  },
+  "keywords": [
+    "async",
+    "lazy",
+    "module",
+    "loader"
+  ],
+  "author": "Aleksander Świtalski",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aswitalski/lazy-module-loader/issues"
+  },
+  "homepage": "https://github.com/aswitalski/lazy-module-loader#readme"
+}
