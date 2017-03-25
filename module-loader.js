@@ -7,46 +7,57 @@
 
   const prefixes = new Map();
 
-  const getScriptPath = path => {
+  const getResourcePath = path => {
     for (let [name, prefix] of prefixes) {
       if (path.startsWith(name)) {
-        return `/${prefix}${path}.js`;
+        return `${prefix}${path}.js`;
       }
     }
-    return `/${path}.js`;
+    return `${path}.js`;
+  }
+
+  const appendScriptToHead = async path => {
+    return new Promise(resolve => {
+      const script = document.createElement('script');
+      script.src = getResourcePath(path);
+      script.onload = () => {
+        registry.set(path, module.exports);
+        resolve(module.exports);
+      };
+      document.head.appendChild(script);
+    });
+  };
+
+  const requireUncached = path => {
+    const resourcePath = getResourcePath(path);
+    decache(resourcePath);
+    return require(resourcePath);
   }
 
   const loadModule = async path => {
     if ('object' === typeof window) {
-      return await new Promise(resolve => {
-        const script = document.createElement('script');
-        script.src = getScriptPath(path);
-        script.onload = () => {
-          registry.set(path, module.exports);
-          resolve(module.exports);
-        };
-        document.head.appendChild(script);
-      });
+      return appendScriptToHead(path);
     }
-    return require('./test/' + path + '.js');
+    return requireUncached(path);
   };
 
   const getPath = symbol => String(symbol).slice(7, -1);
 
-  let currentPath = null;
+  let context = null;
 
   const ModuleLoader = class {
 
     static prefix(name, prefix) {
       prefixes.set(name, prefix);
+      return this;
     };
 
-    static symbol(path, modulePath = currentPath) {
+    static symbol(path, ctx = context) {
       const symbol = Symbol.for(path);
-      let moduleSymbols = dependencySymbols.get(modulePath);
+      let moduleSymbols = dependencySymbols.get(ctx);
       if (!moduleSymbols) {
         moduleSymbols = [];
-        dependencySymbols.set(currentPath, moduleSymbols);
+        dependencySymbols.set(ctx, moduleSymbols);
       }
       moduleSymbols.push(symbol);
       return symbol;
@@ -72,7 +83,7 @@
       if (module) {
         return module;
       }
-      currentPath = path;
+      context = path;
       module = await loadModule(path);
       if (module.init) {
         const result = module.init();
@@ -91,7 +102,11 @@
 
     static async preload(symbol) {
       const path = getPath(symbol);
-      const module = await this.require(path);
+      let module = registry.get(path);
+      if (module) {
+        return module;
+      }
+      module = await this.require(path);
       const symbols = dependencySymbols.get(path) || [];
       for (const symbol of symbols) {
         await this.preload(symbol);
@@ -99,10 +114,14 @@
       return module;
     }
 
-    static get data_() {
+    static get debug_() {
       return {
         getSymbols: path => dependencySymbols.get(path) || [],
         getModules: () => Array.from(registry.entries()),
+        reset: () => {
+          registry.clear();
+          dependencySymbols.clear();
+        }
       }
     }
   };
@@ -111,6 +130,6 @@
     window.loader = ModuleLoader;
     window.module = {};
   } else {
-    module.exports = ModuleLoader;
+    global.loader = ModuleLoader;
   }
 }
