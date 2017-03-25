@@ -1,4 +1,6 @@
 {
+  const circular = loader.symbol('modules/circular');
+
   const ModuleWithNestedDependencies = class {
 
     static async init() {

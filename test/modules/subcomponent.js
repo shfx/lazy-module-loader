@@ -1,9 +1,7 @@
 {
-  const Subcomponent = loader.symbol('modules/subcomponent');
-
-  const Component = class {
+  const Subcomponent = class {
 
   };
 
-  module.exports = Component;
+  module.exports = Subcomponent;
 }
