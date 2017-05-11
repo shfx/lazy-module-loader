@@ -1,4 +1,6 @@
 {
+  const isBrowser = 'object' === typeof window;
+
   /** Path => module mapping. */
   const registry = new Map();
 
@@ -35,7 +37,7 @@
   }
 
   const loadModule = async path => {
-    if ('object' === typeof window) {
+    if (isBrowser) {
       return appendScriptToHead(path);
     }
     return requireUncached(path);
@@ -125,8 +127,6 @@
       }
     }
   };
-
-  const isBrowser = 'object' === typeof window;
 
   if (isBrowser) {
     window.loader = ModuleLoader;
