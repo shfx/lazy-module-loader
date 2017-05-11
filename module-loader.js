@@ -87,7 +87,7 @@
       module = await loadModule(path);
       if (module.init) {
         const result = module.init();
-        if ('object' === typeof result && 'function' === typeof result.then) {
+        if (result instanceof Promise) {
           await result;
         }
       }
@@ -126,7 +126,9 @@
     }
   };
 
-  if ('object' === typeof window) {
+  const isBrowser = 'object' === typeof window;
+
+  if (isBrowser) {
     window.loader = ModuleLoader;
     window.module = {};
   } else {
