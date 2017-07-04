@@ -3,7 +3,7 @@ describe('loader.require(path)', () => {
   it('loads the module', async () => {
 
     afterEach(() => {
-      loader.debug_.reset();
+      loader.$debug.reset();
     });
 
     // given
@@ -16,8 +16,8 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'Module');
     
-    assert.equal(loader.debug_.getSymbols(path).length, 0);
-    assert.equal(loader.debug_.getModules().length, 1);
+    assert.equal(loader.$debug.getSymbols(path).length, 0);
+    assert.equal(loader.$debug.getModules().length, 1);
 
     assert.equal(await loader.require(path), module);
   });
@@ -34,8 +34,8 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'ModuleWithSymbols');
 
-    assert.equal(loader.debug_.getSymbols(path).length, 2);
-    assert.equal(loader.debug_.getModules().length, 1);
+    assert.equal(loader.$debug.getSymbols(path).length, 2);
+    assert.equal(loader.$debug.getModules().length, 1);
   });
 
   it('loads the module with resolved dependency', async () => {
@@ -50,8 +50,8 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'ModuleWithDependency');
 
-    assert.equal(loader.debug_.getSymbols(path).length, 0);
-    assert.equal(loader.debug_.getModules().length, 2);
+    assert.equal(loader.$debug.getSymbols(path).length, 0);
+    assert.equal(loader.$debug.getModules().length, 2);
 
     assert(module.dependency);
     assert.equal(module.dependency.name, 'Dependency');
@@ -69,8 +69,8 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'ModuleWithNestedDependencies');
 
-    assert.equal(loader.debug_.getSymbols(path).length, 1);
-    assert.equal(loader.debug_.getModules().length, 3);
+    assert.equal(loader.$debug.getSymbols(path).length, 1);
+    assert.equal(loader.$debug.getModules().length, 3);
 
     assert(module.dependency);
     assert.equal(module.dependency.name, 'NestedDependency');

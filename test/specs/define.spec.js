@@ -1,7 +1,7 @@
 describe('loader.define(path, module)', () => {
 
   afterEach(() => {
-    loader.debug_.reset();
+    loader.$debug.reset();
   });
 
   it('defines the module', async () => {
@@ -30,6 +30,6 @@ describe('loader.define(path, module)', () => {
     
     // then
     assert.equal(loader.get(path), module);
-    assert.equal(loader.debug_.getSymbols(path).length, 2);
+    assert.equal(loader.$debug.getSymbols(path).length, 2);
   });
 });

@@ -1,7 +1,7 @@
 describe('loader.resolve(symbol)', () => {
 
   afterEach(() => {
-    loader.debug_.reset();
+    loader.$debug.reset();
   });
 
   it('resolves the module', async () => {
@@ -17,8 +17,8 @@ describe('loader.resolve(symbol)', () => {
     assert(module);
     assert.equal(module.name, 'Module');
     
-    assert.equal(loader.debug_.getSymbols(path).length, 0);
-    assert.equal(loader.debug_.getModules().length, 1);
+    assert.equal(loader.$debug.getSymbols(path).length, 0);
+    assert.equal(loader.$debug.getModules().length, 1);
 
     assert.equal(loader.get(path), module);
     assert.equal(loader.get(symbol), module);
@@ -37,8 +37,8 @@ describe('loader.resolve(symbol)', () => {
     assert(module);
     assert.equal(module.name, 'ModuleWithSymbols');
 
-    assert.equal(loader.debug_.getSymbols(path).length, 2);
-    assert.equal(loader.debug_.getModules().length, 1);
+    assert.equal(loader.$debug.getSymbols(path).length, 2);
+    assert.equal(loader.$debug.getModules().length, 1);
 
     assert.equal(loader.get(path), module);
     assert.equal(loader.get(symbol), module);
