@@ -4,34 +4,6 @@ describe('loader.preload(symbol)', () => {
     loader.$debug.reset();
   });
 
-  it('preloads multiple modules', async () => {
-
-    // given
-    const firstModuleSymbol =
-        loader.symbol('modules/module-with-nested-dependencies');
-    const secondModuleSymbol = loader.symbol('modules/module-with-dependency');
-    const thirdModuleSymbol = loader.symbol('modules/module-with-symbols');
-
-    // when
-    const [firstModule, secondModule, thirdModule] = await Promise.all([
-      loader.preload(firstModuleSymbol, true),
-      loader.preload(secondModuleSymbol, true),
-      loader.preload(thirdModuleSymbol, true),
-    ]);
-
-    // then
-    assert(firstModule);
-    assert.equal(firstModule.name, 'ModuleWithNestedDependencies');
-
-    assert(secondModule);
-    assert.equal(secondModule.name, 'ModuleWithDependency');
-
-    assert(thirdModule);
-    assert.equal(thirdModule.name, 'ModuleWithSymbols');
-
-    assert.equal(loader.$debug.getModules().length, 8);
-  });
-
   it('preloads the module', async () => {
 
     // given
