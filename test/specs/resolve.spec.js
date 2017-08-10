@@ -8,10 +8,9 @@ describe('loader.resolve(symbol)', () => {
 
     // given
     const path = 'modules/module';
-    const symbol = loader.symbol(path);
 
     // when
-    const module = await loader.resolve(symbol);
+    const module = await loader.resolve(path);
 
     // then
     assert(module);
@@ -21,17 +20,15 @@ describe('loader.resolve(symbol)', () => {
     assert.equal(loader.$debug.getModules().length, 1);
 
     assert.equal(loader.get(path), module);
-    assert.equal(loader.get(symbol), module);
   });
 
   it('resolves the module with dependency symbols', async () => {
 
     // given
     const path = 'modules/module-with-symbols';
-    const symbol = loader.symbol(path);
 
     // when
-    const module = await loader.resolve(symbol);
+    const module = await loader.resolve(path);
 
     // then
     assert(module);
@@ -41,6 +38,5 @@ describe('loader.resolve(symbol)', () => {
     assert.equal(loader.$debug.getModules().length, 1);
 
     assert.equal(loader.get(path), module);
-    assert.equal(loader.get(symbol), module);
   });
 });

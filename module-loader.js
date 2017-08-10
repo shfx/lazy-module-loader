@@ -54,7 +54,8 @@
     return requireUncached(path);
   };
 
-  const getPath = symbol => String(symbol).slice(7, -1);
+  const getPath = path =>
+      typeof path === 'symbol' ? String(path).slice(7, -1) : path;
 
   let context = null;
 
@@ -95,26 +96,45 @@
       throw new Error(`No module found for path '${path}'`);
     }
 
+    static detectDependencies(method) {
+      const str = method.toString();
+      const args = str.substring(str.indexOf('(') + 1, str.indexOf(')'));
+      if (!args) {
+        return [];
+      }
+      return args.split(',').map(
+          arg => arg.trim().match(/(\/\*\=.*\*\/)/)[0].slice(3, -2).trim());
+    }
+
     static async require(path) {
+      return this.resolve(path, loadModule);
+    }
+
+    static async resolve(path, loader = loadModule) {
+      path = getPath(path);
       let module = registry.get(path);
       if (module) {
         return module;
       }
       context = path;
-      module = await loadModule(path);
+      if (!loader) {
+        loader = this.loadModule(path);
+      }
+      module = await loader(path);
       if (module.init) {
-        const result = module.init();
+        const paths = this.detectDependencies(module.init);
+        const deps = await Promise.all(
+          paths.map(key => (
+            path === key ? module : this.resolve(key, loader)
+          ))
+        );
+        const result = module.init(...deps);
         if (result instanceof Promise) {
           await result;
         }
       }
       registry.set(path, module);
       return module;
-    }
-
-    static async resolve(symbol) {
-      const path = getPath(symbol);
-      return this.require(path);
     }
 
     static async foreload(symbol) {
