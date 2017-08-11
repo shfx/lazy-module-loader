@@ -30,13 +30,19 @@
   };
 
   const appendScriptToHead = async path => {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
+      module.exports = null;
       const script = document.createElement('script');
-      script.src = getResourcePath(path);
+      const resourcePath = getResourcePath(path);
+      script.src = resourcePath;
       script.onload = () => {
         registry.set(path, module.exports);
         resolve(module.exports);
       };
+      script.onerror = error => {
+        console.error(`Error loading module "${path}" from "${resourcePath}"!`);
+        reject(error);
+      }
       document.head.appendChild(script);
     });
   };
@@ -117,15 +123,12 @@
         return module;
       }
       context = path;
-      if (!loader) {
-        loader = this.loadModule(path);
-      }
       module = await loader(path);
       if (module.init) {
         const paths = this.detectDependencies(module.init);
         const deps = await Promise.all(
           paths.map(key => (
-            path === key ? module : this.resolve(key, loader)
+            path === key ? module : this.require(key)
           ))
         );
         const result = module.init(...deps);
