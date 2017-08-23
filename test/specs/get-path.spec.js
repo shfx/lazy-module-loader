@@ -23,4 +23,16 @@ describe('loader.getPath(module)', () => {
     // then
     assert.equal(path, `${id}main.js`);
   });
+
+  it('resolves the CSS path', async () => {
+
+    // given
+    const id = 'path/to/some/style.css';
+
+    // when
+    const path = loader.getPath(id);
+
+    // then
+    assert.equal(path, id);
+  });
 });
