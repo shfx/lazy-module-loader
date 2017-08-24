@@ -115,12 +115,12 @@
           arg => arg.trim().match(/(\/\*\=.*\*\/)/)[0].slice(3, -2).trim());
     }
 
-    static async require(path) {
-      return this.resolve(path, loadModule);
+    static async require(id) {
+      return this.resolve(id, loadModule);
     }
 
-    static async resolve(path, loader = loadModule) {
-      path = getPath(path);
+    static async resolve(id, loader = loadModule) {
+      const path = getPath(id);
       let module = registry.get(path);
       if (module) {
         return module;
@@ -143,35 +143,35 @@
       return module;
     }
 
-    static async foreload(symbol) {
+    static async foreload(id) {
 
       let done;
       const currentReadyPromise = readyPromise;
       readyPromise = new Promise(resolve => { done = resolve; });
       await currentReadyPromise;
 
-      const module = await this.preload(symbol);
+      const module = await this.preload(id);
       done();
       return module;
     }
 
-    static async preload(symbol) {
+    static async preload(id) {
 
-      const path = getPath(symbol);
+      const path = getPath(id);
       let module = registry.get(path);
       if (module) {
         return module;
       }
       module = await this.require(path);
       const symbols = dependencySymbols.get(path) || [];
-      for (const symbol of symbols) {
+      for (let symbol of symbols) {
         await this.preload(symbol);
       }
       return module;
     }
 
-    static getPath(module) {
-      return getResourcePath(module);
+    static getPath(id) {
+      return getResourcePath(id);
     }
 
     static get $debug() {
