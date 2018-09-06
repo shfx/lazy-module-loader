@@ -1,7 +1,7 @@
 {
   const symbol = loader.symbol('modules/circular');
 
-  const Circular = class {
+  class Circular {
 
   };
 

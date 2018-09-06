@@ -1,5 +1,5 @@
 {
-  const Subcomponent = class {
+  class Subcomponent {
 
   };
 

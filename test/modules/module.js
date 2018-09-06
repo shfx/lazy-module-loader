@@ -1,5 +1,5 @@
 {
-  const Module = class {
+  class Module {
 
   };
 
