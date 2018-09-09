@@ -4,7 +4,7 @@
   "description": "Async module loader with support for lazy loading and preloading",
   "main": "module-loader.js",
   "scripts": {
-    "coverage": "node_modules/.bin/babel-node node_modules/.bin/babel-istanbul cover node_modules/.bin/_mocha",
+    "coverage": "nyc mocha",
     "test": "mocha"
   },
   "repository": {
@@ -25,17 +25,10 @@
   "homepage": "https://github.com/aswitalski/lazy-module-loader#readme",
   "devDependencies": {
     "assert": "^1.4.1",
-    "babel-cli": "^6.23.0",
-    "babel-istanbul": "^0.12.1",
-    "babel-plugin-transform-class-properties": "^6.19.0",
-    "babel-polyfill": "^6.20.0",
-    "babel-preset-es2015": "^6.18.0",
-    "babel-preset-stage-0": "^6.16.0",
-    "babel-register": "^6.18.0",
-    "decache": "^4.1.0",
-    "mocha": "^3.2.0",
+    "decache": "^4.4.0",
+    "mocha": "^5.2.0",
+    "nyc": "^13.0.1",
     "pre-commit": "^1.2.2",
-    "sinon": "^1.17.7",
-    "tap": "^10.2.1"
+    "sinon": "^6.1.5"
   }
 }
