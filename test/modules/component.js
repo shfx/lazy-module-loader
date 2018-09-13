@@ -1,7 +1,7 @@
 {
   const Subcomponent = loader.symbol('modules/subcomponent');
 
-  const Component = class {
+  class Component {
 
   };
 

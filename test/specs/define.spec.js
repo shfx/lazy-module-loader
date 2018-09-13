@@ -1,7 +1,7 @@
-describe('loader.define(path, module)', () => {
+describe('loader.define(key, module)', () => {
 
-  afterEach(() => {
-    loader.$debug.reset();
+  beforeEach(() => {
+    global.loader = new loader.constructor();
   });
 
   it('defines the module', async () => {
@@ -15,21 +15,5 @@ describe('loader.define(path, module)', () => {
     
     // then
     assert.equal(loader.get(path), module);
-  });
-
-  it('defines the module with dependency symbols', async () => {
-
-    // given
-    const path = 'modules/module';  
-    const module = class Module {};
-
-    // when
-    const component = loader.symbol('modules/component', path);
-    const subcomponent = loader.symbol('modules/subcomponent', path);
-    loader.define(path, module);
-    
-    // then
-    assert.equal(loader.get(path), module);
-    assert.equal(loader.$debug.getSymbols(path).length, 2);
   });
 });

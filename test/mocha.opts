@@ -3,5 +3,4 @@
 --colors
 --sort
 --reporter spec
---compilers js:babel-register
 ./test/specs/**/*.spec.js

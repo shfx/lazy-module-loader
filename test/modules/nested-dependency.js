@@ -1,5 +1,5 @@
 {
-  const NestedDependency = class {
+  class NestedDependency {
 
     static async init() {
       this.dependency = await loader.require('modules/dependency');

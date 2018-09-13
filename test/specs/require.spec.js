@@ -1,10 +1,10 @@
 describe('loader.require(path)', () => {
 
-  it('loads the module', async () => {
-
-    afterEach(() => {
-      loader.$debug.reset();
+    beforeEach(() => {
+      global.loader = createLoader();
     });
+
+  it('loads the module', async () => {
 
     // given
     const path = 'modules/module';
@@ -16,9 +16,7 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'Module');
     
-    assert.equal(loader.$debug.getSymbols(path).length, 0);
-    assert.equal(loader.$debug.getModules().length, 1);
-
+    assert.equal(loader.registry.size, 1);
     assert.equal(await loader.require(path), module);
   });
 
@@ -33,9 +31,7 @@ describe('loader.require(path)', () => {
     // then
     assert(module);
     assert.equal(module.name, 'ModuleWithSymbols');
-
-    assert.equal(loader.$debug.getSymbols(path).length, 2);
-    assert.equal(loader.$debug.getModules().length, 1);
+    assert.equal(loader.registry.size, 3);
   });
 
   it('loads the module with resolved dependency', async () => {
@@ -50,8 +46,7 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'ModuleWithDependency');
 
-    assert.equal(loader.$debug.getSymbols(path).length, 0);
-    assert.equal(loader.$debug.getModules().length, 2);
+    assert.equal(loader.registry.size, 2);
 
     assert(module.dependency);
     assert.equal(module.dependency.name, 'Dependency');
@@ -69,8 +64,7 @@ describe('loader.require(path)', () => {
     assert(module);
     assert.equal(module.name, 'ModuleWithNestedDependencies');
 
-    assert.equal(loader.$debug.getSymbols(path).length, 1);
-    assert.equal(loader.$debug.getModules().length, 3);
+    assert.equal(loader.registry.size, 4);
 
     assert(module.dependency);
     assert.equal(module.dependency.name, 'NestedDependency');

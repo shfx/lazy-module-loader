@@ -1,5 +1,5 @@
 {
-  const Dependency = class {
+  class Dependency {
 
   };
 
