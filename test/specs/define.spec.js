@@ -16,4 +16,19 @@ describe('loader.define(key, module)', () => {
     // then
     assert.equal(loader.get(path), module);
   });
+
+  it('ignores excess calls', async () => {
+
+    // given
+    const path = 'modules/module';
+    const moduleOne = class Module {};
+    const moduleTwo = class Module {};
+
+    // when
+    loader.define(path, moduleOne);
+    loader.define(path, moduleTwo);
+    
+    // then
+    assert.equal(loader.get(path), moduleOne);
+  });
 });

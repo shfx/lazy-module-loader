@@ -121,10 +121,11 @@
 
     define(key, exported) {
       const module = this.registry.get(key) || new Module(key);
-      console.assert(!this.ref, 'Module already resolved for:', key);
-      module.ref = exported;
-      this.registry.set(key, module);
-      this.modulePromise(key).resolve(exported);
+      if (!module.ref) {
+        module.ref = exported;
+        this.registry.set(key, module);
+        this.modulePromise(key).resolve(exported);
+      }
       return module;
     }
 
