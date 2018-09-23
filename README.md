@@ -105,8 +105,8 @@ Loader can chain the interceptor plugins, to serve as a fallback to custom loade
 ```js
 const Plugin = {
   name: 'bundle',
-  getPath(key) {
-    const path = this.next.getPath(key);
+  path(key) {
+    const path = this.next.path(key);
     if (someCondition) {
       return `http://www.example.com/module/${path}`;
     }

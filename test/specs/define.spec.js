@@ -12,7 +12,7 @@ describe('loader.define(key, module)', () => {
 
     // when
     loader.define(path, module);
-    
+
     // then
     assert.equal(loader.get(path), module);
   });
@@ -27,7 +27,7 @@ describe('loader.define(key, module)', () => {
     // when
     loader.define(path, moduleOne);
     loader.define(path, moduleTwo);
-    
+
     // then
     assert.equal(loader.get(path), moduleOne);
   });

@@ -7,10 +7,22 @@
 
   class Module {
 
-    constructor(key) {
+    constructor(key, isRequired = false) {
+
       this.key = key;
-      this.ref = null;
-      this.dependencies = [];
+      this.isRequired = isRequired;
+
+      this.exports = null;
+      this.dependencies = new Set();
+      this.clients = new Set();
+    }
+
+    get ref() {
+      return this.exports;
+    }
+
+    set ref(ref) {
+      this.exports = ref;
     }
 
     get modules() {
@@ -36,16 +48,6 @@
     }
   }
 
-  class Dependency {
-
-    constructor(source, target, isRequired = false) {
-      this.description = `${source.key} => ${target.key}`;
-      this.source = source;
-      this.target = target;
-      this.isRequired = isRequired;
-    }
-  }
-
   class Context {
 
     constructor() {
@@ -57,17 +59,23 @@
     }
 
     restore(module) {
-      console.assert(this.stack.pop() === module, 'Invalid context detected');
+      const currentModule = this.stack.pop();
+      if (currentModule !== module) {
+        throw new Error(
+            `Invalid context detected: '${
+                                          currentModule.key
+                                        }', expecting: ${module.key}`);
+      }
     }
 
     get module() {
       return this.stack[this.stack.length - 1] || null;
     }
 
-    registerDependencyTo(target, required = false) {
+    registerDependencyTo(dependency, required = false) {
       if (this.module) {
-        const dependency = new Dependency(this.module, target, required);
-        this.module.dependencies.push(dependency);
+        this.module.dependencies.add(dependency);
+        dependency.clients.add(this.module);
       }
     }
   }
@@ -75,90 +83,206 @@
   class Loader {
 
     constructor() {
-      this.ready = Promise.resolve(true);
+      this.ready = Promise.resolve(null);
       this.context = new Context();
       this.registry = new Map();
       this.modulePromises = new Map();
+      this.preloadPromises = new Map();
     }
 
+    /*
+     * Makes the loader use the specified plugin.
+     */
+    use(plugin) {
+      return global.loader = new Proxy(loader, {
+        get(target, prop) {
+          if (prop === 'next') {
+            return target;
+          }
+          if (plugin.hasOwnProperty(prop)) {
+            const value = plugin[prop];
+            if (typeof value === 'function') {
+              return value.bind(global.loader);
+            }
+            return value;
+          }
+          return target[prop];
+        },
+      });
+    }
+
+    /*
+     * Declares that module resolved by given key
+     * is an optional dependency.
+     *
+     * Returns a symbol for the specified key.
+     */
     symbol(key) {
       let module = this.registry.get(key);
       if (!module) {
-        module = new Module(key);
-        this.registry.set(key, module)
+        module = new Module(key, false);
+        this.registry.set(key, module);
       }
-      this.context.registerDependencyTo(module, false);
+      this.context.registerDependencyTo(module);
       return Symbol.for(key);
     }
 
+    /*
+     * Finds a module by the specified key and declares it
+     * to be a required dependency.
+     *
+     * Returns a reference to the module's exported value.
+     */
     async require(key) {
+
       let module = this.registry.get(key);
+      if (module) {
+        if (!module.isRequired) {
+          module.isRequired = true;
+        }
+      } else {
+        module = new Module(key, true);
+        this.registry.set(key, module);
+      }
+      this.context.registerDependencyTo(module);
+
+      return await this.resolve(key);
+    }
+
+    /*
+     * Finds a module by the specified key.
+     *
+     * Returns a reference to the module's exported value.
+     */
+    async resolve(key) {
+
+      let module = this.registry.get(key);
+
       if (module) {
         if (module.ref) {
           return module.ref;
         }
         if (module.isPending) {
-          return this.modulePromise(key);
+          return this.modulePromise_(key);
         }
+
       } else {
-        module = new Module(key);
+        module = new Module(key, false);
         this.registry.set(key, module);
       }
-      this.context.registerDependencyTo(module, true);
-      this.context.save(module);
-      module.ref = await this.load(module);
-      if (typeof module.ref.init === 'function') {
-        await module.ref.init();
-      }
-      this.context.restore(module);
-      return module.ref;
+
+      return await this.load(module);
     }
 
+    /*
+     * Gets the module from the cache and returns its exported value.
+     * Returns null if the module is not found.
+     */
     get(key) {
       const module = this.registry.get(key);
       return module ? module.ref : null;
     }
 
+    /*
+     * Defines the exported value for the module identified
+     * by the specified key. If the module does not exist, creates a new one.
+     */
     define(key, exported) {
       const module = this.registry.get(key) || new Module(key);
       if (!module.ref) {
         module.ref = exported;
         this.registry.set(key, module);
-        this.modulePromise(key).resolve(exported);
+        this.modulePromise_(key).resolve(exported);
       }
       return module;
     }
 
+    /*
+     * Loads and initializes the module. Returns its exported value.
+     */
     async load(module) {
+
+      module.isPending = true;
+
       const key = module.key;
-      const path = this.getPath(key);
+      const path = this.path(key);
+
       try {
-        module.isPending = true;
-        const exported =
-            isBrowser ? await this.loadInBrowser(path) : this.loadInNode(path);
+
+        this.context.save(module);
+
+        const exported = isBrowser ? await this.loadInBrowser(path) :
+                                     await this.loadInNode(path);
         delete module.isPending;
-        this.modulePromise(key).resolve(exported);
+
+        module.ref = exported;
+
+        if (typeof module.ref.init === 'function') {
+          await module.ref.init();
+        }
+
+        this.modulePromise_(key).resolve(exported);
+
+        this.context.restore(module);
         return exported;
+
       } catch (error) {
         this.report({
           key,
           error,
         });
+        failed(error);
       }
     }
 
-    async preload(key) {
-      const exported = await this.require(key);
+    /*
+     * Waits for the loader to be ready to process requests with given token.
+     */
+    async waitForLoader(token) {
+
+      if (this.isInitial_(token)) {
+
+        const loaderReady = this.ready;
+
+        let done;
+        const preloadedPromise = new Promise(resolve => {
+          done = resolve;
+        });
+
+        this.ready = preloadedPromise;
+        await loaderReady;
+        return done;
+      }
+
+      return () => null;
+    }
+
+    /*
+     * Preloads the module and resolves recursively all the dependencies.
+     *
+     * Returns the module's exported value.
+     */
+    async preload(key, token = Symbol(key)) {
+
+      const done = await this.waitForLoader(token);
+
+      const preloadPromise = this.preloadPromise_(token);
+      const exported = await this.resolve(key);
       const module = this.registry.get(key);
       for (const dependency of module.dependencies) {
-        if (!dependency.target.ref) {
-          await this.preload(dependency.target.key);
+        if (!dependency.ref) {
+          await this.preload(dependency.key, token);
         }
       }
+      done(exported);
+      preloadPromise.resolve(exported);
       return exported;
     }
 
-    getPath(key) {
+    /*
+     * Returns the resource path for the specified key.
+     */
+    path(key) {
       if (key.endsWith('/')) {
         return `${key}main.js`;
       }
@@ -168,8 +292,11 @@
       return `${key}.js`;
     }
 
+    /*
+     * Loads the script in the browser environment.
+     */
     loadInBrowser(path) {
-      const createLoadPromise = () => new Promise((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         window.module = {
           exports: null,
         };
@@ -177,7 +304,7 @@
         script.src = path;
         script.onload = () => {
           const exported = module.exports;
-          module.exports = null;
+          delete window.module;
           resolve(exported);
         };
         script.onerror = error => {
@@ -185,15 +312,29 @@
         };
         document.head.appendChild(script);
       });
-      return this.ready = this.ready.then(createLoadPromise);
     }
 
+    /*
+     * Loads the script in the node.js environment.
+     */
     loadInNode(path) {
       decache(path);
       return require(path);
     }
 
-    modulePromise(key, create = true) {
+    /*
+     * Reports the error provided by the error message.
+     */
+    report(message) {
+      console.error('Error loading module:', message.key);
+      throw message.error;
+    }
+
+    isInitial_(token) {
+      return !this.preloadPromises.get(token);
+    }
+
+    modulePromise_(key, create = true) {
       let modulePromise = this.modulePromises.get(key);
       if (modulePromise) {
         return modulePromise;
@@ -212,27 +353,20 @@
       return modulePromise;
     }
 
-    report(message) {
-      console.error('Error loading module:', message.key);
-      throw message.error;
-    }
-
-    use(plugin) {
-      global.loader = new Proxy(loader, {
-        get(target, prop) {
-          if (prop === 'next') {
-            return target;
-          }
-          if (plugin.hasOwnProperty(prop)) {
-            const value = plugin[prop];
-            if (typeof value === 'function') {
-              return value.bind(global.loader);
-            }
-            return value;
-          }
-          return target[prop];
-        },
+    preloadPromise_(token) {
+      let preloadPromise = this.preloadPromises.get(token);
+      if (preloadPromise) {
+        return preloadPromise;
+      }
+      let promiseResolve, promiseReject;
+      preloadPromise = new Promise((resolve, reject) => {
+        promiseResolve = resolve;
+        promiseReject = reject;
       });
+      preloadPromise.resolve = promiseResolve;
+      preloadPromise.reject = promiseReject;
+      this.preloadPromises.set(token, preloadPromise);
+      return preloadPromise;
     }
   }
 

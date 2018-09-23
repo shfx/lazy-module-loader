@@ -1,8 +1,8 @@
-describe('loader.require(path)', () => {
+describe('loader.require(key)', () => {
 
-    beforeEach(() => {
-      global.loader = createLoader();
-    });
+  beforeEach(() => {
+    global.loader = createLoader();
+  });
 
   it('loads the module', async () => {
 
@@ -15,7 +15,7 @@ describe('loader.require(path)', () => {
     // then
     assert(module);
     assert.equal(module.name, 'Module');
-    
+
     assert.equal(loader.registry.size, 1);
     assert.equal(await loader.require(path), module);
   });
@@ -43,10 +43,10 @@ describe('loader.require(path)', () => {
     const module = await loader.require(path);
 
     // then
+    assert.equal(loader.registry.size, 2);
+
     assert(module);
     assert.equal(module.name, 'ModuleWithDependency');
-
-    assert.equal(loader.registry.size, 2);
 
     assert(module.dependency);
     assert.equal(module.dependency.name, 'Dependency');

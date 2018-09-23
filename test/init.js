@@ -8,11 +8,11 @@ const Loader = loader.constructor;
 global.createLoader = () => {
   loader = new Loader();
   loader.use({
-    getPath(key) {
+    path(key) {
       if (key.startsWith('modules')) {
-        return `./test/${this.next.getPath(key)}`;
+        return `./test/${this.next.path(key)}`;
       }
-      return this.next.getPath(key);
+      return this.next.path(key);
     },
   });
   return loader;
