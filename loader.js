@@ -7,7 +7,7 @@
 
   class Module {
 
-    constructor(key, isRequired = false) {
+    constructor(key, isRequired) {
 
       this.key = key;
       this.isRequired = isRequired;
@@ -17,34 +17,25 @@
       this.clients = new Set();
     }
 
-    get ref() {
-      return this.exports;
-    }
-
-    set ref(ref) {
-      this.exports = ref;
-    }
-
-    get modules() {
-      const modules = new Set();
+    get deepDependencies() {
+      const deps = new Set();
       const collect = module => {
         for (const dependency of module.dependencies) {
-          const target = dependency.target;
-          if (!modules.has(target)) {
-            modules.add(target);
-            collect(target);
+          if (!deps.has(dependency)) {
+            deps.add(dependency);
+            collect(dependency);
           }
         }
       };
       collect(this);
-      return modules;
+      return deps;
     }
 
     get isPreloaded() {
-      if (!this.ref) {
+      if (!this.exports) {
         return false;
       }
-      return [...this.modules].every(module => module.ref);
+      return [...this.deepDependencies].every(module => module.exports);
     }
   }
 
@@ -120,8 +111,7 @@
     symbol(key) {
       let module = this.registry.get(key);
       if (!module) {
-        module = new Module(key, false);
-        this.registry.set(key, module);
+        module =  this.registerModule_(key);
       }
       this.context.registerDependencyTo(module);
       return Symbol.for(key);
@@ -141,8 +131,7 @@
           module.isRequired = true;
         }
       } else {
-        module = new Module(key, true);
-        this.registry.set(key, module);
+        module = this.registerModule_(key, true);
       }
       this.context.registerDependencyTo(module);
 
@@ -159,16 +148,15 @@
       let module = this.registry.get(key);
 
       if (module) {
-        if (module.ref) {
-          return module.ref;
+        if (module.exports) {
+          return module.exports;
         }
         if (module.isPending) {
           return this.modulePromise_(key);
         }
 
       } else {
-        module = new Module(key, false);
-        this.registry.set(key, module);
+        module = this.registerModule_(key);
       }
 
       return await this.load(module);
@@ -180,7 +168,7 @@
      */
     get(key) {
       const module = this.registry.get(key);
-      return module ? module.ref : null;
+      return module ? module.exports : null;
     }
 
     /*
@@ -188,9 +176,9 @@
      * by the specified key. If the module does not exist, creates a new one.
      */
     define(key, exported) {
-      const module = this.registry.get(key) || new Module(key);
-      if (!module.ref) {
-        module.ref = exported;
+      const module = this.registry.get(key) || this.registerModule_(key);
+      if (!module.exports) {
+        module.exports = exported;
         this.registry.set(key, module);
         this.modulePromise_(key).resolve(exported);
       }
@@ -215,10 +203,14 @@
                                      await this.loadInNode(path);
         delete module.isPending;
 
-        module.ref = exported;
+        if (!exported) {
+          throw new Error(`No "module.exports" value found in module: ${key}`);
+        }
 
-        if (typeof module.ref.init === 'function') {
-          await module.ref.init();
+        module.exports = exported;
+
+        if (typeof module.exports.init === 'function') {
+          await module.exports.init();
         }
 
         this.modulePromise_(key).resolve(exported);
@@ -270,7 +262,7 @@
       const exported = await this.resolve(key);
       const module = this.registry.get(key);
       for (const dependency of module.dependencies) {
-        if (!dependency.ref) {
+        if (!dependency.exports) {
           await this.preload(dependency.key, token);
         }
       }
@@ -332,6 +324,12 @@
 
     isInitial_(token) {
       return !this.preloadPromises.get(token);
+    }
+
+    registerModule_(key, isRequired = false) {
+      const module = new Module(key, isRequired);
+      this.registry.set(key, module);
+      return module
     }
 
     modulePromise_(key, create = true) {

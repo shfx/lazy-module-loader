@@ -108,12 +108,12 @@ describe('loader.preload(key)', () => {
     assert.equal(
         [...firstModuleDependencies][0],
         loader.registry.get('modules/circular'));
-    assert(firstModuleDependencies[0].ref);
+    assert(firstModuleDependencies[0].exports);
 
     assert.equal(
         firstModuleDependencies[1],
         loader.registry.get('modules/nested-dependency'));
-    assert(firstModuleDependencies[1].ref);
+    assert(firstModuleDependencies[1].exports);
 
     assert(secondExport);
     assert.equal(secondExport.name, 'ModuleWithDependency');
@@ -126,7 +126,7 @@ describe('loader.preload(key)', () => {
 
     assert.equal(
         secondModuleDependencies[0], loader.registry.get('modules/dependency'));
-    assert(secondModuleDependencies[0].ref);
+    assert(secondModuleDependencies[0].exports);
 
     assert(thirdExport);
     assert.equal(thirdExport.name, 'ModuleWithSymbols');
@@ -139,12 +139,12 @@ describe('loader.preload(key)', () => {
 
     assert.equal(
         thirdModuleDependencies[0], loader.registry.get('modules/component'));
-    assert(thirdModuleDependencies[0].ref);
+    assert(thirdModuleDependencies[0].exports);
 
     assert.equal(
         thirdModuleDependencies[1],
         loader.registry.get('modules/subcomponent'));
-    assert(thirdModuleDependencies[1].ref);
+    assert(thirdModuleDependencies[1].exports);
 
     assert.equal(loader.registry.size, 8);
   });

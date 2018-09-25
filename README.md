@@ -33,7 +33,7 @@ Custom extension - returns the unchanged path:
 
 ## Module format
 
-Modules utilize the CommonJS format, they can define the `async init()` method which is used to inject the references to dependencies.
+Modules utilize the CommonJS format, they can define the `async init()` method which is used to inject references to dependencies.
 
 ```js
 let Sevice;
@@ -103,8 +103,7 @@ node bundler.js 'core/toolkit'
 Loader can chain the interceptor plugins, to serve as a fallback to custom loaders.
 
 ```js
-const Plugin = {
-  name: 'bundle',
+const plugin = {
   path(key) {
     const path = this.next.path(key);
     if (someCondition) {
@@ -113,4 +112,5 @@ const Plugin = {
     return path;
   },
 };
+loader.use(plugin);
 ```
