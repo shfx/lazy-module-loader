@@ -13,9 +13,10 @@ describe('loader.load(module)', () => {
 
     // given
     const id = 'modules/module';
+    loader.symbol(id);
 
     // when
-    const module = loader.registerModule_(id);
+    const module = loader.registry.get(id);
     await loader.load(module);
 
     // then
@@ -29,9 +30,10 @@ describe('loader.load(module)', () => {
 
     // given
     const id = 'modules/invalid';
+    loader.symbol(id);
 
     // when
-    const module = loader.registerModule_(id);
+    const module = loader.registry.get(id);
     let msg = null;
     try {
       await loader.load(module);

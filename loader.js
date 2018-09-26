@@ -71,14 +71,65 @@
     }
   }
 
+  /* An id to module mapping (String to Module). */
+  const modulePromises = new Map();
+
+  /* A token to timestamp mapping (Symbol => Number). */
+  const loaderReadyPromises = new Map();
+
+  /* Indicates if a request with given token is already awaiting loader time. */
+  const isAwaiting = token => loaderReadyPromises.get(token);
+
+  /* Creates an instance of a module with given id and registers it. */
+  const registerModule = (id, isRequired = false) => {
+    const module = new Module(id, isRequired);
+    loader.registry.set(id, module);
+    return module
+  };
+
+  /* Returns a promise that will resolve to a module once it's loaded. */
+  const getModulePromise = (id, create = true) => {
+    let modulePromise = modulePromises.get(id);
+    if (modulePromise) {
+      return modulePromise;
+    }
+    if (!create) {
+      return null;
+    }
+    let promiseResolve, promiseReject;
+    modulePromise = new Promise((resolve, reject) => {
+      promiseResolve = resolve;
+      promiseReject = reject;
+    });
+    modulePromise.resolve = promiseResolve;
+    modulePromise.reject = promiseReject;
+    modulePromises.set(id, modulePromise);
+    return modulePromise;
+  };
+
+  /* Returns a promise that will resolve with a token when loader is ready. */
+  const getLoaderReadyPromise = token => {
+    let loaderReadyPromise = loaderReadyPromises.get(token);
+    if (loaderReadyPromise) {
+      return loaderReadyPromise;
+    }
+    let promiseResolve, promiseReject;
+    loaderReadyPromise = new Promise((resolve, reject) => {
+      promiseResolve = resolve;
+      promiseReject = reject;
+    });
+    loaderReadyPromise.resolve = promiseResolve;
+    loaderReadyPromise.reject = promiseReject;
+    loaderReadyPromises.set(token, loaderReadyPromise);
+    return loaderReadyPromise;
+  };
+
   class Loader {
 
     constructor() {
       this.ready = Promise.resolve(null);
       this.context = new Context();
       this.registry = new Map();
-      this.modulePromises = new Map();
-      this.preloadPromises = new Map();
     }
 
     /*
@@ -109,9 +160,9 @@
      * Returns a symbol for the specified id.
      */
     symbol(id) {
-      let module = this.registry.get(id);
+      let module = loader.registry.get(id);
       if (!module) {
-        module =  this.registerModule_(id);
+        module =  registerModule(id);
       }
       this.context.registerDependencyTo(module);
       return Symbol.for(id);
@@ -125,13 +176,13 @@
      */
     async require(id) {
 
-      let module = this.registry.get(id);
+      let module = loader.registry.get(id);
       if (module) {
         if (!module.isRequired) {
           module.isRequired = true;
         }
       } else {
-        module = this.registerModule_(id, true);
+        module = registerModule(id, true);
       }
       this.context.registerDependencyTo(module);
 
@@ -145,18 +196,18 @@
      */
     async resolve(id) {
 
-      let module = this.registry.get(id);
+      let module = loader.registry.get(id);
 
       if (module) {
         if (module.exports) {
           return module.exports;
         }
         if (module.isPending) {
-          return this.modulePromise_(id);
+          return getModulePromise(id);
         }
 
       } else {
-        module = this.registerModule_(id);
+        module = registerModule(id);
       }
 
       return await this.load(module);
@@ -167,7 +218,7 @@
      * Returns null if the module is not found.
      */
     get(id) {
-      const module = this.registry.get(id);
+      const module = loader.registry.get(id);
       return module ? module.exports : null;
     }
 
@@ -176,11 +227,11 @@
      * by the specified id. If the module does not exist, creates a new one.
      */
     define(id, exported) {
-      const module = this.registry.get(id) || this.registerModule_(id);
+      const module = loader.registry.get(id) || registerModule(id);
       if (!module.exports) {
         module.exports = exported;
-        this.registry.set(id, module);
-        this.modulePromise_(id).resolve(exported);
+        loader.registry.set(id, module);
+        getModulePromise(id).resolve(exported);
       }
       return module;
     }
@@ -213,7 +264,7 @@
           await module.exports.init();
         }
 
-        this.modulePromise_(id).resolve(exported);
+        getModulePromise(id).resolve(exported);
 
         this.context.restore(module);
         return exported;
@@ -232,7 +283,7 @@
      */
     async waitForLoader(token) {
 
-      if (this.isInitial_(token)) {
+      if (!isAwaiting(token)) {
 
         const loaderReady = this.ready;
 
@@ -258,16 +309,16 @@
 
       const done = await this.waitForLoader(token);
 
-      const preloadPromise = this.preloadPromise_(token);
+      const loaderReadyPromise = getLoaderReadyPromise(token);
       const exported = await this.resolve(id);
-      const module = this.registry.get(id);
+      const module = loader.registry.get(id);
       for (const dependency of module.dependencies) {
         if (!dependency.exports) {
           await this.preload(dependency.id, token);
         }
       }
       done(exported);
-      preloadPromise.resolve(exported);
+      loaderReadyPromise.resolve(token);
       return exported;
     }
 
@@ -320,51 +371,6 @@
     report(message) {
       console.error('Error loading module:', message.id);
       throw message.error;
-    }
-
-    isInitial_(token) {
-      return !this.preloadPromises.get(token);
-    }
-
-    registerModule_(id, isRequired = false) {
-      const module = new Module(id, isRequired);
-      this.registry.set(id, module);
-      return module
-    }
-
-    modulePromise_(id, create = true) {
-      let modulePromise = this.modulePromises.get(id);
-      if (modulePromise) {
-        return modulePromise;
-      }
-      if (!create) {
-        return null;
-      }
-      let promiseResolve, promiseReject;
-      modulePromise = new Promise((resolve, reject) => {
-        promiseResolve = resolve;
-        promiseReject = reject;
-      });
-      modulePromise.resolve = promiseResolve;
-      modulePromise.reject = promiseReject;
-      this.modulePromises.set(id, modulePromise);
-      return modulePromise;
-    }
-
-    preloadPromise_(token) {
-      let preloadPromise = this.preloadPromises.get(token);
-      if (preloadPromise) {
-        return preloadPromise;
-      }
-      let promiseResolve, promiseReject;
-      preloadPromise = new Promise((resolve, reject) => {
-        promiseResolve = resolve;
-        promiseReject = reject;
-      });
-      preloadPromise.resolve = promiseResolve;
-      preloadPromise.reject = promiseReject;
-      this.preloadPromises.set(token, preloadPromise);
-      return preloadPromise;
     }
   }
 
