@@ -1,6 +1,6 @@
 {
   "name": "lazy-module-loader",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Async module loader with support for lazy loading and preloading",
   "main": "module-loader.js",
   "scripts": {
@@ -32,6 +32,6 @@
     "nyc": "^13.0.1",
     "path": "^0.12.7",
     "pre-commit": "^1.2.2",
-    "sinon": "^6.1.5"
+    "sinon": "^6.3.4"
   }
 }
