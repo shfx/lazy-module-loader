@@ -1,4 +1,4 @@
-describe('loader.symbol(key)', () => {
+describe('loader.symbol(id)', () => {
 
   beforeEach(() => {
     global.loader = createLoader();
@@ -7,29 +7,29 @@ describe('loader.symbol(key)', () => {
   it('returns correct symbol', async () => {
 
     // given
-    const key = 'my/module';
+    const id = 'my/module';
 
     // when
-    const symbol = loader.symbol(key);
+    const symbol = loader.symbol(id);
 
     // then
-    assert.equal(symbol, Symbol.for(key));
+    assert.equal(symbol, Symbol.for(id));
   });
 
   it('registers optional dependency', async () => {
 
     // given
-    const key = 'foo/bar';
+    const id = 'foo/bar';
     sinon.spy(loader.context, 'registerDependencyTo');
 
     // when
-    loader.symbol(key);
+    loader.symbol(id);
 
     // then
     assert(loader.context.registerDependencyTo.calledOnce);
     
     const module = loader.context.registerDependencyTo.firstCall.args[0];    
-    assert.equal(module.key, key);
+    assert.equal(module.id, id);
     assert.equal(module.isRequired, false);
   });
 });

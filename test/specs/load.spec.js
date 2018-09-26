@@ -12,10 +12,10 @@ describe('loader.load(module)', () => {
   it('loads the module', async () => {
 
     // given
-    const key = 'modules/module';
+    const id = 'modules/module';
 
     // when
-    const module = loader.registerModule_(key);
+    const module = loader.registerModule_(id);
     await loader.load(module);
 
     // then
@@ -28,10 +28,10 @@ describe('loader.load(module)', () => {
   it('reports invalid "module.exports" value', async () => {
 
     // given
-    const key = 'modules/invalid';
+    const id = 'modules/invalid';
 
     // when
-    const module = loader.registerModule_(key);
+    const module = loader.registerModule_(id);
     let msg = null;
     try {
       await loader.load(module);
@@ -41,6 +41,6 @@ describe('loader.load(module)', () => {
 
     // then
     assert(console.error.called);
-    assert.equal(msg, `No "module.exports" value found in module: ${key}`);
+    assert.equal(msg, `No "module.exports" found in module with id: ${id}`);
   });
 });

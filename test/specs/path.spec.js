@@ -3,36 +3,36 @@ describe('loader.path(module)', () => {
   it('resolves the file-like path', async () => {
 
     // given
-    const key = 'path/to/some/file';
+    const id = 'path/to/some/file';
 
     // when
-    const path = loader.path(key);
+    const path = loader.path(id);
 
     // then
-    assert.equal(path, `${key}.js`);
+    assert.equal(path, `${id}.js`);
   });
 
   it('resolves the directory-like path', async () => {
 
     // given
-    const key = 'path/to/some/dir/';
+    const id = 'path/to/some/dir/';
 
     // when
-    const path = loader.path(key);
+    const path = loader.path(id);
 
     // then
-    assert.equal(path, `${key}main.js`);
+    assert.equal(path, `${id}main.js`);
   });
 
   it('resolves the CSS path', async () => {
 
     // given
-    const key = 'path/to/some/style.css';
+    const id = 'path/to/some/style.css';
 
     // when
-    const path = loader.path(key);
+    const path = loader.path(id);
 
     // then
-    assert.equal(path, key);
+    assert.equal(path, id);
   });
 });

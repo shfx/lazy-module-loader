@@ -1,4 +1,4 @@
-describe('loader.preload(key)', () => {
+describe('loader.preload(id)', () => {
 
   beforeEach(() => {
     global.loader = createLoader();
@@ -7,10 +7,10 @@ describe('loader.preload(key)', () => {
   it('preloads the module with no dependencies', async () => {
 
     // given
-    const key = 'modules/module';
+    const id = 'modules/module';
 
     // when
-    const module = await loader.preload(key);
+    const module = await loader.preload(id);
 
     // then
     assert(module);
@@ -22,16 +22,16 @@ describe('loader.preload(key)', () => {
   it('preloads the module with optional dependencies', async () => {
 
     // given
-    const key = 'modules/module-with-symbols';
+    const id = 'modules/module-with-symbols';
 
     // when
-    const module = await loader.preload(key);
+    const module = await loader.preload(id);
 
     // then
     assert(module);
     assert.equal(module.name, 'ModuleWithSymbols');
 
-    assert.equal(loader.registry.get(key).dependencies.size, 2);
+    assert.equal(loader.registry.get(id).dependencies.size, 2);
 
     assert(loader.registry.get('modules/component'));
     assert.equal(loader.get('modules/component').name, 'Component');
@@ -43,10 +43,10 @@ describe('loader.preload(key)', () => {
   it('preloads the module with required dependency', async () => {
 
     // given
-    const key = 'modules/module-with-dependency';
+    const id = 'modules/module-with-dependency';
 
     // when
-    const module = await loader.preload(key);
+    const module = await loader.preload(id);
 
     // then
     assert(module);
@@ -60,10 +60,10 @@ describe('loader.preload(key)', () => {
   it('preloads the module with required nested dependencies', async () => {
 
     // given
-    const key = 'modules/module-with-nested-dependencies';
+    const id = 'modules/module-with-nested-dependencies';
 
     // when
-    const module = await loader.preload(key);
+    const module = await loader.preload(id);
 
     // then
     assert(module);

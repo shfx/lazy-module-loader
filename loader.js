@@ -7,9 +7,9 @@
 
   class Module {
 
-    constructor(key, isRequired) {
+    constructor(id, isRequired) {
 
-      this.key = key;
+      this.id = id;
       this.isRequired = isRequired;
 
       this.exports = null;
@@ -54,8 +54,8 @@
       if (currentModule !== module) {
         throw new Error(
             `Invalid context detected: '${
-                                          currentModule.key
-                                        }', expecting: ${module.key}`);
+                                          currentModule.id
+                                        }', expecting: ${module.id}`);
       }
     }
 
@@ -103,60 +103,60 @@
     }
 
     /*
-     * Declares that module resolved by given key
+     * Declares that module resolved by given id
      * is an optional dependency.
      *
-     * Returns a symbol for the specified key.
+     * Returns a symbol for the specified id.
      */
-    symbol(key) {
-      let module = this.registry.get(key);
+    symbol(id) {
+      let module = this.registry.get(id);
       if (!module) {
-        module =  this.registerModule_(key);
+        module =  this.registerModule_(id);
       }
       this.context.registerDependencyTo(module);
-      return Symbol.for(key);
+      return Symbol.for(id);
     }
 
     /*
-     * Finds a module by the specified key and declares it
+     * Finds a module by the specified id and declares it
      * to be a required dependency.
      *
      * Returns a reference to the module's exported value.
      */
-    async require(key) {
+    async require(id) {
 
-      let module = this.registry.get(key);
+      let module = this.registry.get(id);
       if (module) {
         if (!module.isRequired) {
           module.isRequired = true;
         }
       } else {
-        module = this.registerModule_(key, true);
+        module = this.registerModule_(id, true);
       }
       this.context.registerDependencyTo(module);
 
-      return await this.resolve(key);
+      return await this.resolve(id);
     }
 
     /*
-     * Finds a module by the specified key.
+     * Finds a module by the specified id.
      *
      * Returns a reference to the module's exported value.
      */
-    async resolve(key) {
+    async resolve(id) {
 
-      let module = this.registry.get(key);
+      let module = this.registry.get(id);
 
       if (module) {
         if (module.exports) {
           return module.exports;
         }
         if (module.isPending) {
-          return this.modulePromise_(key);
+          return this.modulePromise_(id);
         }
 
       } else {
-        module = this.registerModule_(key);
+        module = this.registerModule_(id);
       }
 
       return await this.load(module);
@@ -166,21 +166,21 @@
      * Gets the module from the cache and returns its exported value.
      * Returns null if the module is not found.
      */
-    get(key) {
-      const module = this.registry.get(key);
+    get(id) {
+      const module = this.registry.get(id);
       return module ? module.exports : null;
     }
 
     /*
      * Defines the exported value for the module identified
-     * by the specified key. If the module does not exist, creates a new one.
+     * by the specified id. If the module does not exist, creates a new one.
      */
-    define(key, exported) {
-      const module = this.registry.get(key) || this.registerModule_(key);
+    define(id, exported) {
+      const module = this.registry.get(id) || this.registerModule_(id);
       if (!module.exports) {
         module.exports = exported;
-        this.registry.set(key, module);
-        this.modulePromise_(key).resolve(exported);
+        this.registry.set(id, module);
+        this.modulePromise_(id).resolve(exported);
       }
       return module;
     }
@@ -192,8 +192,8 @@
 
       module.isPending = true;
 
-      const key = module.key;
-      const path = this.path(key);
+      const id = module.id;
+      const path = this.path(id);
 
       try {
 
@@ -204,7 +204,7 @@
         delete module.isPending;
 
         if (!exported) {
-          throw new Error(`No "module.exports" value found in module: ${key}`);
+          throw new Error(`No "module.exports" found in module with id: ${id}`);
         }
 
         module.exports = exported;
@@ -213,14 +213,14 @@
           await module.exports.init();
         }
 
-        this.modulePromise_(key).resolve(exported);
+        this.modulePromise_(id).resolve(exported);
 
         this.context.restore(module);
         return exported;
 
       } catch (error) {
         this.report({
-          key,
+          id,
           error,
         });
         failed(error);
@@ -254,16 +254,16 @@
      *
      * Returns the module's exported value.
      */
-    async preload(key, token = Symbol(key)) {
+    async preload(id, token = Symbol(id)) {
 
       const done = await this.waitForLoader(token);
 
       const preloadPromise = this.preloadPromise_(token);
-      const exported = await this.resolve(key);
-      const module = this.registry.get(key);
+      const exported = await this.resolve(id);
+      const module = this.registry.get(id);
       for (const dependency of module.dependencies) {
         if (!dependency.exports) {
-          await this.preload(dependency.key, token);
+          await this.preload(dependency.id, token);
         }
       }
       done(exported);
@@ -272,16 +272,16 @@
     }
 
     /*
-     * Returns the resource path for the specified key.
+     * Returns the resource path for the specified id.
      */
-    path(key) {
-      if (key.endsWith('/')) {
-        return `${key}main.js`;
+    path(id) {
+      if (id.endsWith('/')) {
+        return `${id}main.js`;
       }
-      if (/^(.*)\.([a-z0-9]{1,4})$/.test(key)) {
-        return key;
+      if (/^(.*)\.([a-z0-9]{1,4})$/.test(id)) {
+        return id;
       }
-      return `${key}.js`;
+      return `${id}.js`;
     }
 
     /*
@@ -318,7 +318,7 @@
      * Reports the error provided by the error message.
      */
     report(message) {
-      console.error('Error loading module:', message.key);
+      console.error('Error loading module:', message.id);
       throw message.error;
     }
 
@@ -326,14 +326,14 @@
       return !this.preloadPromises.get(token);
     }
 
-    registerModule_(key, isRequired = false) {
-      const module = new Module(key, isRequired);
-      this.registry.set(key, module);
+    registerModule_(id, isRequired = false) {
+      const module = new Module(id, isRequired);
+      this.registry.set(id, module);
       return module
     }
 
-    modulePromise_(key, create = true) {
-      let modulePromise = this.modulePromises.get(key);
+    modulePromise_(id, create = true) {
+      let modulePromise = this.modulePromises.get(id);
       if (modulePromise) {
         return modulePromise;
       }
@@ -347,7 +347,7 @@
       });
       modulePromise.resolve = promiseResolve;
       modulePromise.reject = promiseReject;
-      this.modulePromises.set(key, modulePromise);
+      this.modulePromises.set(id, modulePromise);
       return modulePromise;
     }
 

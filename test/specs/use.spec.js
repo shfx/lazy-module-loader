@@ -7,15 +7,15 @@ describe('loader.use(plugin)', () => {
   it('overrides methods', async () => {
 
     // given
-    const key = 'some/module';
+    const id = 'some/module';
     loader.use({
-      path(key) {
-        return `${key}.ejs`;
+      path(id) {
+        return `${id}.ejs`;
       },
     })
 
     // when
-    const path = await loader.path(key);
+    const path = await loader.path(id);
 
     // then
     assert.equal(path, 'some/module.ejs');
@@ -24,27 +24,27 @@ describe('loader.use(plugin)', () => {
   it('can be chained', async () => {
 
     // given
-    const key = 'foo/bar';
+    const id = 'foo/bar';
     const loaderWithPlugins = loader.use({
-      async resolve(key) {
+      async resolve(id) {
         return {
-          key,
-          path: this.path(key),
+          id,
+          path: this.path(id),
         };
       },
     }).use({
-      path(key) {
-        return `core/${key}.js`;
+      path(id) {
+        return `core/${id}.js`;
       },
     });
 
     // when
-    const module = await loader.resolve(key);
+    const module = await loader.resolve(id);
 
     // then
     assert.equal(loader, loaderWithPlugins);
     assert.deepEqual(module, {
-      key: 'foo/bar',
+      id: 'foo/bar',
       path: 'core/foo/bar.js',
     });
   });

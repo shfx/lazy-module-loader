@@ -1,4 +1,4 @@
-describe('loader.require(key)', () => {
+describe('loader.require(id)', () => {
 
   beforeEach(() => {
     global.loader = createLoader();
@@ -7,26 +7,26 @@ describe('loader.require(key)', () => {
   it('loads the module', async () => {
 
     // given
-    const path = 'modules/module';
+    const id = 'modules/module';
 
     // when
-    const module = await loader.require(path);
+    const module = await loader.require(id);
 
     // then
     assert(module);
     assert.equal(module.name, 'Module');
 
     assert.equal(loader.registry.size, 1);
-    assert.equal(await loader.require(path), module);
+    assert.equal(await loader.require(id), module);
   });
 
   it('loads the module with dependency symbols', async () => {
 
     // given
-    const path = 'modules/module-with-symbols';
+    const id = 'modules/module-with-symbols';
 
     // when
-    const module = await loader.require(path);
+    const module = await loader.require(id);
 
     // then
     assert(module);
@@ -37,10 +37,10 @@ describe('loader.require(key)', () => {
   it('loads the module with resolved dependency', async () => {
 
     // given
-    const path = 'modules/module-with-dependency';
+    const id = 'modules/module-with-dependency';
 
     // when
-    const module = await loader.require(path);
+    const module = await loader.require(id);
 
     // then
     assert.equal(loader.registry.size, 2);
@@ -55,10 +55,10 @@ describe('loader.require(key)', () => {
   it('loads the module with resolved nested dependencies', async () => {
 
     // given
-    const path = 'modules/module-with-nested-dependencies';
+    const id = 'modules/module-with-nested-dependencies';
 
     // when
-    const module = await loader.require(path);
+    const module = await loader.require(id);
 
     // then
     assert(module);
