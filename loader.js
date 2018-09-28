@@ -8,7 +8,6 @@
   class Module {
 
     constructor(id, isRequired) {
-
       this.id = id;
       this.isRequired = isRequired;
 
@@ -162,7 +161,7 @@
     symbol(id) {
       let module = loader.registry.get(id);
       if (!module) {
-        module =  registerModule(id);
+        module = registerModule(id);
       }
       this.context.registerDependencyTo(module);
       return Symbol.for(id);
@@ -175,7 +174,6 @@
      * Returns a reference to the module's exported value.
      */
     async require(id) {
-
       let module = loader.registry.get(id);
       if (module) {
         if (!module.isRequired) {
@@ -185,19 +183,16 @@
         module = registerModule(id, true);
       }
       this.context.registerDependencyTo(module);
-
       return await this.resolve(id);
     }
 
     /*
      * Finds a module by the specified id.
      *
-     * Returns a reference to the module's exported value.
+     * Returns module's exported value.
      */
     async resolve(id) {
-
       let module = loader.registry.get(id);
-
       if (module) {
         if (module.exports) {
           return module.exports;
@@ -205,21 +200,10 @@
         if (module.isPending) {
           return getModulePromise(id);
         }
-
       } else {
         module = registerModule(id);
       }
-
       return await this.load(module);
-    }
-
-    /*
-     * Gets the module from the cache and returns its exported value.
-     * Returns null if the module is not found.
-     */
-    get(id) {
-      const module = loader.registry.get(id);
-      return module ? module.exports : null;
     }
 
     /*
@@ -237,11 +221,47 @@
     }
 
     /*
+     * Gets the module from the cache and returns its exported value.
+     * Returns null if the module is not found.
+     */
+    get(id) {
+      const module = loader.registry.get(id);
+      return module ? module.exports : null;
+    }
+
+    /*
+     * Preloads the module with given id and preloads recursively
+     * all the dependencies. Returns module's exported value.
+     */
+    async preload(id) {
+      const token = Symbol(id);
+      const done = await this.waitForLoader(token);
+      const loaderReadyPromise = getLoaderReadyPromise(token);
+      const exported = await this.loadWithDependencies(id);
+      done(exported);
+      loaderReadyPromise.resolve(token);
+      return exported;
+    }
+
+    /*
+     * Loads the module with given id with all its dependencies.
+     * Returns module's exported value.
+     */
+    async loadWithDependencies(id) {
+      const exported = await this.resolve(id);
+      const module = loader.registry.get(id);
+      for (const dependency of module.dependencies) {
+        if (!dependency.exports) {
+          await this.loadWithDependencies(dependency.id);
+        }
+      }
+      return exported;
+    }
+
+    /*
      * Loads and initializes the module. Returns its exported value.
      */
     async load(module) {
-
-      module.isPending = true;
 
       const id = module.id;
       const path = this.path(id);
@@ -250,23 +270,22 @@
 
         this.context.save(module);
 
+        module.isPending = true;
         const exported = isBrowser ? await this.loadInBrowser(path) :
                                      await this.loadInNode(path);
         delete module.isPending;
-
         if (!exported) {
           throw new Error(`No "module.exports" found in module with id: ${id}`);
         }
-
         module.exports = exported;
 
         if (typeof module.exports.init === 'function') {
           await module.exports.init();
         }
 
-        getModulePromise(id).resolve(exported);
-
         this.context.restore(module);
+
+        getModulePromise(id).resolve(exported);
         return exported;
 
       } catch (error) {
@@ -282,44 +301,17 @@
      * Waits for the loader to be ready to process requests with given token.
      */
     async waitForLoader(token) {
-
       if (!isAwaiting(token)) {
-
         const loaderReady = this.ready;
-
         let done;
         const preloadedPromise = new Promise(resolve => {
           done = resolve;
         });
-
         this.ready = preloadedPromise;
         await loaderReady;
         return done;
       }
-
       return () => null;
-    }
-
-    /*
-     * Preloads the module and resolves recursively all the dependencies.
-     *
-     * Returns the module's exported value.
-     */
-    async preload(id, token = Symbol(id)) {
-
-      const done = await this.waitForLoader(token);
-
-      const loaderReadyPromise = getLoaderReadyPromise(token);
-      const exported = await this.resolve(id);
-      const module = loader.registry.get(id);
-      for (const dependency of module.dependencies) {
-        if (!dependency.exports) {
-          await this.preload(dependency.id, token);
-        }
-      }
-      done(exported);
-      loaderReadyPromise.resolve(token);
-      return exported;
     }
 
     /*
