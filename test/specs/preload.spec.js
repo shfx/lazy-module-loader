@@ -1,6 +1,7 @@
 describe('loader.preload(id)', () => {
 
   beforeEach(() => {
+    loader.reset();
     global.loader = createLoader();
   });
 
@@ -147,5 +148,44 @@ describe('loader.preload(id)', () => {
     assert(thirdModuleDependencies[1].exports);
 
     assert.equal(loader.registry.size, 8);
+  });
+
+  it('preloads multiple modules with delays', async () => {
+
+    // given
+    const A = 'modules/nested/a';
+    const B = 'modules/nested/b';
+    const C = 'modules/nested/c';
+    const D = 'modules/nested/d';
+
+    // when
+    const [a, b, c] = await Promise.all([
+      loader.preload(A),
+      loader.preload(B),
+      loader.preload(C),
+      loader.preload(A),
+    ]);
+
+    const ModuleA = loader.registry.get(A);
+    const ModuleB = loader.registry.get(B);
+    const ModuleC = loader.registry.get(C);
+    const ModuleD = loader.registry.get(D);
+
+    // then
+    assert.equal(loader.registry.size, 4);
+
+    assert(a);
+    assert.equal(a.name, 'A');
+    assert.equal(ModuleA.dependencies.size, 2);
+
+    assert(b);
+    assert.equal(b.name, 'B');
+    assert.equal(ModuleB.dependencies.size, 1);
+
+    assert(c);
+    assert.equal(c.name, 'C');
+    assert.equal(ModuleC.dependencies.size, 1);
+
+    assert.equal(ModuleD.dependencies.size, 0);
   });
 });
