@@ -1,4 +1,4 @@
-describe('loader.path(module)', () => {
+describe('loader.path(id)', () => {
 
   it('resolves the file-like path', async () => {
 

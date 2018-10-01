@@ -29,13 +29,6 @@
       collect(this);
       return deps;
     }
-
-    get isPreloaded() {
-      if (!this.exports) {
-        return false;
-      }
-      return [...this.deepDependencies].every(module => module.exports);
-    }
   }
 
   class Context {
@@ -70,57 +63,17 @@
     }
   }
 
-  /* An id to module mapping (String to Module). */
-  const modulePromises = new Map();
+  /* Mapping of ids to promises of exported values. */
+  const exportPromises = new Map();
 
-  /* A token to timestamp mapping (Symbol => Number). */
-  const loaderReadyPromises = new Map();
-
-  /* Indicates if a request with given token is already awaiting loader time. */
-  const isAwaiting = token => loaderReadyPromises.get(token);
+  /* Mapping of ids to promises of loaded modules. */
+  const preloadPromises = new Map();
 
   /* Creates an instance of a module with given id and registers it. */
   const registerModule = (id, isRequired = false) => {
     const module = new Module(id, isRequired);
     loader.registry.set(id, module);
-    return module
-  };
-
-  /* Returns a promise that will resolve to a module once it's loaded. */
-  const getModulePromise = (id, create = true) => {
-    let modulePromise = modulePromises.get(id);
-    if (modulePromise) {
-      return modulePromise;
-    }
-    if (!create) {
-      return null;
-    }
-    let promiseResolve, promiseReject;
-    modulePromise = new Promise((resolve, reject) => {
-      promiseResolve = resolve;
-      promiseReject = reject;
-    });
-    modulePromise.resolve = promiseResolve;
-    modulePromise.reject = promiseReject;
-    modulePromises.set(id, modulePromise);
-    return modulePromise;
-  };
-
-  /* Returns a promise that will resolve with a token when loader is ready. */
-  const getLoaderReadyPromise = token => {
-    let loaderReadyPromise = loaderReadyPromises.get(token);
-    if (loaderReadyPromise) {
-      return loaderReadyPromise;
-    }
-    let promiseResolve, promiseReject;
-    loaderReadyPromise = new Promise((resolve, reject) => {
-      promiseResolve = resolve;
-      promiseReject = reject;
-    });
-    loaderReadyPromise.resolve = promiseResolve;
-    loaderReadyPromise.reject = promiseReject;
-    loaderReadyPromises.set(token, loaderReadyPromise);
-    return loaderReadyPromise;
+    return module;
   };
 
   class Loader {
@@ -198,7 +151,7 @@
           return module.exports;
         }
         if (module.isPending) {
-          return getModulePromise(id);
+          return exportPromises.get(id);
         }
       } else {
         module = registerModule(id);
@@ -215,7 +168,6 @@
       if (!module.exports) {
         module.exports = exported;
         loader.registry.set(id, module);
-        getModulePromise(id).resolve(exported);
       }
       return module;
     }
@@ -234,13 +186,40 @@
      * all the dependencies. Returns module's exported value.
      */
     async preload(id) {
-      const token = Symbol(id);
-      const done = await this.waitForLoader(token);
-      const loaderReadyPromise = getLoaderReadyPromise(token);
-      const exported = await this.loadWithDependencies(id);
-      done(exported);
-      loaderReadyPromise.resolve(token);
+
+      let preloadPromise = preloadPromises.get(id);
+      if (preloadPromise) {
+        return preloadPromise;
+      }
+
+      const done = await this.waitForLoader(id);
+
+      const module = loader.registry.get(id);
+      if (module && module.isLoaded) {
+        return module.exports;
+      }
+
+      preloadPromise = this.loadWithDependencies(id);
+      preloadPromises.set(id, preloadPromise);
+
+      const exported = await preloadPromise;
+      done();
       return exported;
+    }
+
+    /*
+     * Waits for the loader to be ready to process requests with given token.
+     */
+    async waitForLoader(id) {
+      const loaderReady = this.ready;
+      let done;
+      const donePromise = new Promise(resolve => {
+        done = resolve;
+      });
+      this.ready = donePromise;
+
+      await loaderReady;
+      return done;
     }
 
     /*
@@ -255,6 +234,7 @@
           await this.loadWithDependencies(dependency.id);
         }
       }
+      module.isLoaded = true;
       return exported;
     }
 
@@ -271,9 +251,14 @@
         this.context.save(module);
 
         module.isPending = true;
-        const exported = isBrowser ? await this.loadInBrowser(path) :
-                                     await this.loadInNode(path);
+
+        const exportPromise =
+            isBrowser ? this.loadInBrowser(path) : this.loadInNode(path);
+        exportPromises.set(id, exportPromise);
+
+        const exported = await exportPromise;
         delete module.isPending;
+
         if (!exported) {
           throw new Error(`No "module.exports" found in module with id: ${id}`);
         }
@@ -285,7 +270,6 @@
 
         this.context.restore(module);
 
-        getModulePromise(id).resolve(exported);
         return exported;
 
       } catch (error) {
@@ -295,23 +279,6 @@
         });
         failed(error);
       }
-    }
-
-    /*
-     * Waits for the loader to be ready to process requests with given token.
-     */
-    async waitForLoader(token) {
-      if (!isAwaiting(token)) {
-        const loaderReady = this.ready;
-        let done;
-        const preloadedPromise = new Promise(resolve => {
-          done = resolve;
-        });
-        this.ready = preloadedPromise;
-        await loaderReady;
-        return done;
-      }
-      return () => null;
     }
 
     /*
@@ -363,6 +330,11 @@
     report(message) {
       console.error('Error loading module:', message.id);
       throw message.error;
+    }
+
+    reset() {
+      preloadPromises.clear();
+      exportPromises.clear();
     }
   }
 

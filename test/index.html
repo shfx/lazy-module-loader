@@ -17,6 +17,7 @@
     };
     mocha.setup('bdd');
     mocha.slow(200);
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   </script>
   <script src="specs/define.spec.js"></script>
   <script src="specs/load.spec.js"></script>

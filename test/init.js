@@ -2,6 +2,8 @@ global.assert = require('assert');
 global.sinon = require('sinon');
 global.decache = require('decache');
 
+global.sleep = millis => new Promise(resolve => setTimeout(resolve, millis));
+
 require('../loader.js');
 
 const Loader = loader.constructor;
