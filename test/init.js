@@ -12,9 +12,9 @@ global.createLoader = () => {
   loader.use({
     path(key) {
       if (key.startsWith('modules')) {
-        return `./test/${this.next.path(key)}`;
+        return `./test/${super.path(key)}`;
       }
-      return this.next.path(key);
+      return super.path(key);
     },
   });
   return loader;

@@ -69,13 +69,6 @@
   /* Mapping of ids to promises of loaded modules. */
   const preloadPromises = new Map();
 
-  /* Creates an instance of a module with given id and registers it. */
-  const registerModule = (id, isRequired = false) => {
-    const module = new Module(id, isRequired);
-    loader.registry.set(id, module);
-    return module;
-  };
-
   class Loader {
 
     constructor() {
@@ -88,21 +81,10 @@
      * Makes the loader use the specified plugin.
      */
     use(plugin) {
-      return global.loader = new Proxy(loader, {
-        get(target, prop) {
-          if (prop === 'next') {
-            return target;
-          }
-          if (plugin.hasOwnProperty(prop)) {
-            const value = plugin[prop];
-            if (typeof value === 'function') {
-              return value.bind(global.loader);
-            }
-            return value;
-          }
-          return target[prop];
-        },
-      });
+      console.assert(
+          plugin.constructor === Object, 'Plugin must be a plain object!');
+      Object.setPrototypeOf(plugin, loader);
+      return global.loader = plugin;
     }
 
     /*
@@ -112,9 +94,9 @@
      * Returns a symbol for the specified id.
      */
     symbol(id) {
-      let module = loader.registry.get(id);
+      let module = this.registry.get(id);
       if (!module) {
-        module = registerModule(id);
+        module = this.registerModule(id);
       }
       this.context.registerDependencyTo(module);
       return Symbol.for(id);
@@ -127,13 +109,13 @@
      * Returns a reference to the module's exported value.
      */
     async require(id) {
-      let module = loader.registry.get(id);
+      let module = this.registry.get(id);
       if (module) {
         if (!module.isRequired) {
           module.isRequired = true;
         }
       } else {
-        module = registerModule(id, true);
+        module = this.registerModule(id, true);
       }
       this.context.registerDependencyTo(module);
       return await this.resolve(id);
@@ -145,7 +127,7 @@
      * Returns module's exported value.
      */
     async resolve(id) {
-      let module = loader.registry.get(id);
+      let module = this.registry.get(id);
       if (module) {
         if (module.exports) {
           return module.exports;
@@ -154,7 +136,7 @@
           return exportPromises.get(id);
         }
       } else {
-        module = registerModule(id);
+        module = this.registerModule(id);
       }
       return await this.load(module);
     }
@@ -164,10 +146,10 @@
      * by the specified id. If the module does not exist, creates a new one.
      */
     define(id, exported) {
-      const module = loader.registry.get(id) || registerModule(id);
+      const module = this.registry.get(id) || this.registerModule(id);
       if (!module.exports) {
         module.exports = exported;
-        loader.registry.set(id, module);
+        this.registry.set(id, module);
       }
       return module;
     }
@@ -177,7 +159,7 @@
      * Returns null if the module is not found.
      */
     get(id) {
-      const module = loader.registry.get(id);
+      const module = this.registry.get(id);
       return module ? module.exports : null;
     }
 
@@ -194,7 +176,7 @@
 
       const done = await this.waitForLoader(id);
 
-      const module = loader.registry.get(id);
+      const module = this.registry.get(id);
       if (module && module.isLoaded) {
         return module.exports;
       }
@@ -228,7 +210,7 @@
      */
     async loadWithDependencies(id) {
       const exported = await this.resolve(id);
-      const module = loader.registry.get(id);
+      const module = this.registry.get(id);
       for (const dependency of module.dependencies) {
         if (!dependency.exports) {
           await this.loadWithDependencies(dependency.id);
@@ -320,7 +302,9 @@
      * Loads the script in the node.js environment.
      */
     loadInNode(path) {
-      decache(path);
+      if (global.decache) {
+        decache(path);
+      }
       return require(path);
     }
 
@@ -330,6 +314,13 @@
     report(message) {
       console.error('Error loading module:', message.id);
       throw message.error;
+    }
+
+    /* Creates an instance of a module with given id and registers it. */
+    registerModule(id, isRequired = false) {
+      const module = new Module(id, isRequired);
+      this.registry.set(id, module);
+      return module;
     }
 
     reset() {
