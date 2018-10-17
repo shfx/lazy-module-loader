@@ -93,9 +93,12 @@ Such call will load recursively all the required and optional dependencies.
 
 Modules can also be bundled together with all their dependencies into a single file. What allows them to be loaded synchronously in a bunch.
 
-```bash
-# FIXME: not yet there
-node bundler.js 'core/toolkit'
+```js
+require('./bundler.js');
+
+bundler.generate('root/module', 'My Library', {
+  prefix: 'some/prefix/',
+});
 ```
 
 ## Plugins
