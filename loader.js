@@ -1,9 +1,6 @@
 {
   const isBrowser = 'object' === typeof window;
-
-  if (isBrowser) {
-    window.global = window;
-  }
+  const $global = isBrowser ? window : global;
 
   class Module {
 
@@ -16,6 +13,9 @@
       this.clients = new Set();
     }
 
+    /*
+     * Returns a set of all module's dependencies.
+     */
     get deepDependencies() {
       const deps = new Set();
       const collect = module => {
@@ -37,24 +37,36 @@
       this.stack = [];
     }
 
+    /*
+     * Pushes the module onto the stack.
+     */
     save(module) {
       this.stack.push(module);
     }
 
+    /*
+     * Restores the stack to the previous state.
+     */
     restore(module) {
-      const currentModule = this.stack.pop();
-      if (currentModule !== module) {
+      const lastModule = this.stack.pop();
+      if (lastModule !== module) {
         throw new Error(
             `Invalid context detected: '${
-                                          currentModule.id
+                                          lastModule.id
                                         }', expecting: ${module.id}`);
       }
     }
 
+    /*
+     * Returns the last module from the stack.
+     */
     get module() {
       return this.stack[this.stack.length - 1] || null;
     }
 
+    /*
+     * Adds the specified dependency to the current module.
+     */
     registerDependencyTo(dependency, required = false) {
       if (this.module) {
         this.module.dependencies.add(dependency);
@@ -67,7 +79,7 @@
   const exportPromises = new Map();
 
   /* Mapping of ids to promises of loaded modules. */
-  const preloadPromises = new Map();
+  const loadPromises = new Map();
 
   class Loader {
 
@@ -84,7 +96,7 @@
       console.assert(
           plugin.constructor === Object, 'Plugin must be a plain object!');
       Object.setPrototypeOf(plugin, loader);
-      return global.loader = plugin;
+      return $global.loader = plugin;
     }
 
     /*
@@ -106,7 +118,7 @@
      * Finds a module by the specified id and declares it
      * to be a required dependency.
      *
-     * Returns a reference to the module's exported value.
+     * Returns module's exported value.
      */
     async require(id) {
       let module = this.registry.get(id);
@@ -142,8 +154,8 @@
     }
 
     /*
-     * Defines the exported value for the module identified
-     * by the specified id. If the module does not exist, creates a new one.
+     * Defines the exported value for the module with the specified id.
+     * If the module does not exist, creates a new one.
      */
     define(id, exported) {
       const module = this.registry.get(id) || this.registerModule(id);
@@ -169,30 +181,31 @@
      */
     async preload(id) {
 
-      let preloadPromise = preloadPromises.get(id);
-      if (preloadPromise) {
-        return preloadPromise;
+      let loadPromise = loadPromises.get(id);
+      if (loadPromise) {
+        return loadPromise;
       }
 
-      const done = await this.waitForLoader(id);
+      const done = await this.waitForLoader();
 
       const module = this.registry.get(id);
       if (module && module.isLoaded) {
         return module.exports;
       }
 
-      preloadPromise = this.loadWithDependencies(id);
-      preloadPromises.set(id, preloadPromise);
+      loadPromise = this.loadWithDependencies(id);
+      loadPromises.set(id, loadPromise);
 
-      const exported = await preloadPromise;
+      const exported = await loadPromise;
       done();
       return exported;
     }
 
     /*
-     * Waits for the loader to be ready to process requests with given token.
+     * Waits for the loader to be ready.
+     * Returns the "done" function to release loader for the subsequent calls.
      */
-    async waitForLoader(id) {
+    async waitForLoader() {
       const loaderReady = this.ready;
       let done;
       const donePromise = new Promise(resolve => {
@@ -302,7 +315,7 @@
      * Loads the script in the node.js environment.
      */
     loadInNode(path) {
-      if (global.decache) {
+      if ($global.decache) {
         decache(path);
       }
       return require(path);
@@ -316,18 +329,25 @@
       throw message.error;
     }
 
-    /* Creates an instance of a module with given id and registers it. */
+    /*
+     * Creates an instance of a module with given id and registers it.
+     */
     registerModule(id, isRequired = false) {
       const module = new Module(id, isRequired);
       this.registry.set(id, module);
       return module;
     }
 
+    /*
+     * Resets loader state.
+     */
     reset() {
-      preloadPromises.clear();
+      this.ready = Promise.resolve(null);
+      this.registry.clear();
       exportPromises.clear();
+      loadPromises.clear();
     }
   }
 
-  global.loader = new Loader();
+  $global.loader = new Loader();
 }

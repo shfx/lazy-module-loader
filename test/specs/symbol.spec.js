@@ -27,8 +27,8 @@ describe('loader.symbol(id)', () => {
 
     // then
     assert(loader.context.registerDependencyTo.calledOnce);
-    
-    const module = loader.context.registerDependencyTo.firstCall.args[0];    
+
+    const module = loader.context.registerDependencyTo.firstCall.args[0];
     assert.equal(module.id, id);
     assert.equal(module.isRequired, false);
   });
