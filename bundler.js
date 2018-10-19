@@ -38,8 +38,7 @@ ${modules.map(module => `${module.content}\n${define(module.id)}\n`).join('\n')}
         return super.path(`${prefix}${id}`);
       },
       async load(module) {
-        const filePath = path.resolve(__dirname, this.path(module.id));
-        module.content = fs.readFileSync(filePath, 'utf8');
+        module.content = fs.readFileSync(this.path(module.id), 'utf8');
         return await super.load(module);
       },
     });
