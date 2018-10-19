@@ -246,17 +246,16 @@
         this.context.save(module);
 
         module.isPending = true;
-
         const exportPromise =
             isBrowser ? this.loadInBrowser(path) : this.loadInNode(path);
         exportPromises.set(id, exportPromise);
-
-        const exported = await exportPromise;
         delete module.isPending;
 
+        const exported = await exportPromise;
         if (!exported) {
           throw new Error(`No "module.exports" found in module with id: ${id}`);
         }
+
         module.exports = exported;
 
         if (typeof module.exports.init === 'function') {
@@ -264,7 +263,6 @@
         }
 
         this.context.restore(module);
-
         return exported;
 
       } catch (error) {
@@ -272,7 +270,6 @@
           id,
           error,
         });
-        failed(error);
       }
     }
 
