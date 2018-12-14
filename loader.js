@@ -287,6 +287,23 @@
     }
 
     /*
+     * Loads the script as a module in the browser environment.
+     */
+    import(id) {
+      const path = loader.path(id);
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = path;
+        script.type = 'module';
+        script.onload = resolve;
+        script.onerror = error => {
+          reject(error);
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    /*
      * Loads the script in the browser environment.
      */
     loadInBrowser(path) {
