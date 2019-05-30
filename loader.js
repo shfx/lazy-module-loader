@@ -289,30 +289,30 @@
     /*
      * Loads the script as a module in the browser environment.
      */
-    import(id) {
+    async import(id) {
+      const module = this.registry.get(id);
+      if (module) {
+        return module.exports;
+      }
       const path = loader.path(id);
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = path;
-        script.type = 'module';
-        script.onload = resolve;
-        script.onerror = error => {
-          reject(error);
-        };
-        document.head.appendChild(script);
-      });
+      const exported = await this.loadInBrowser(path, /*= isModule */ true);
+      this.define(id, exported || null);
+      return exported;
     }
 
     /*
      * Loads the script in the browser environment.
      */
-    loadInBrowser(path) {
+    loadInBrowser(path, isModule = false) {
       return new Promise((resolve, reject) => {
         window.module = {
           exports: null,
         };
         const script = document.createElement('script');
         script.src = path;
+        if (isModule) {
+          script.type = 'module';
+        }
         script.onload = () => {
           const exported = module.exports;
           delete window.module;
