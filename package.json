@@ -2,7 +2,7 @@
   "name": "lazy-module-loader",
   "version": "1.0.0",
   "description": "Async module loader with support for lazy loading and preloading",
-  "main": "module-loader.js",
+  "main": "loader.js",
   "scripts": {
     "coverage": "nyc mocha",
     "test:server": "node test/server.js",
@@ -24,13 +24,15 @@
     "url": "https://github.com/aswitalski/lazy-module-loader/issues"
   },
   "homepage": "https://github.com/aswitalski/lazy-module-loader#readme",
+  "dependencies": {
+    "path": "^0.12.7"
+  },
   "devDependencies": {
     "assert": "^1.4.1",
     "decache": "^4.4.0",
     "express": "^4.16.3",
     "mocha": "^5.2.0",
     "nyc": "^14.1.1",
-    "path": "^0.12.7",
     "pre-commit": "^1.2.2",
     "sinon": "^6.3.4"
   }
