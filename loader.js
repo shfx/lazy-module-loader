@@ -357,4 +357,4 @@ class Loader {
   }
 }
 
-export default new Loader();
+module.exports = new Loader();
